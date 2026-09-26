@@ -22,9 +22,21 @@
 - **音频摘要（可选）**：把摘要合成为一段语音。
 - **数据在自己手里**：所有处理都在你的 Mac 上调度，用的是你自己的 API；Key 存在系统钥匙串，不落明文。关掉窗口后常驻菜单栏，快捷键照常可用。
 
-## 系统要求
+## 两种用法
 
-- Apple Silicon（M 系列芯片）的 Mac，**macOS 14 或更新**。Intel Mac 不支持。
+| | Mac 应用 | 网页版 |
+|---|---|---|
+| 系统 | Apple Silicon Mac，macOS 14+ | **Windows**、macOS（含 Intel）、Linux |
+| 安装 | 下载 DMG，拖进「应用程序」 | 装好 Python / Node / FFmpeg 后，一条命令装依赖 |
+| 界面 | 原生 SwiftUI 窗口 | 浏览器打开 `http://127.0.0.1:5174` |
+| 填 API | 设置里带引导，Key 存钥匙串 | 编辑项目里的 `.env` 文件 |
+| 独有功能 | 全局快捷键一键送总结、菜单栏常驻 | — |
+
+两者都是在你自己的电脑上跑同一套后端，用的都是你自己的 API。下面先讲 Mac 应用，[网页版](#网页版windows--macos--linux)在后面。
+
+## 系统要求（Mac 应用）
+
+- Apple Silicon（M 系列芯片）的 Mac，**macOS 14 或更新**。Intel Mac 请用[网页版](#网页版windows--macos--linux)。
 - 自己的云端 API（见下文「首次设置」）。懂听不内置任何人的凭据。
 
 ## 安装
@@ -86,6 +98,65 @@ YouTube、B 站隔一段时间就会改版，旧版下载组件会失效。遇�
 - **升级**：下载新的 DMG，把 GotIt 拖进「应用程序」替换即可，数据和设置都会保留。新版本首次打开需按上面的方法再放行一次，钥匙串也会再问一次。
 - **卸载**：把 GotIt 移到废纸篓。如需连数据一起清掉，再删除 `~/Library/Application Support/GotIt`、`~/Library/Logs/GotIt`，并在「钥匙串访问」里删除名为 `local.gotit.mac` 的条目。
 
+## 网页版（Windows / macOS / Linux）
+
+网页版在本机跑同一套后端，界面在浏览器里打开，**Windows 也能用**。
+
+### 1. 准备环境
+
+| 组件 | Windows | macOS |
+|---|---|---|
+| Python 3.11+ | [python.org](https://www.python.org/downloads/) 下载安装，**勾选「Add python.exe to PATH」** | `brew install python` |
+| Node.js 20+ | [nodejs.org](https://nodejs.org) 下载 LTS 版 | `brew install node` |
+| FFmpeg | `winget install Gyan.FFmpeg` | `brew install ffmpeg` |
+| Deno（推荐，YouTube 要用） | `winget install DenoLand.Deno` | `brew install deno` |
+| Git | [git-scm.com](https://git-scm.com/download/win) | 系统自带 |
+
+装完**重新打开**终端（PowerShell / 终端），让新装的命令生效。
+
+### 2. 下载源码并安装
+
+```bash
+git clone https://github.com/zz2543/Podcast-summary.git
+cd Podcast-summary
+```
+
+然后**双击启动脚本**：Windows 双击 `start-web.bat`，macOS 双击 `start-web.command`。
+第一次会自动装好全部依赖，并用记事本 / 文本编辑打开 `.env` 让你填 API。
+
+也可以用命令行（Windows 把 `python3` 换成 `py`）：
+
+```bash
+python3 scripts/web.py install
+```
+
+### 3. 填 API
+
+编辑项目根目录的 `.env`，把 `replace-me-*` 换成你自己的值，至少要有：
+
+| 用途 | 要填的项 |
+|---|---|
+| 摘要（LLM） | `DEEPSEEK_API_KEY`（任何 OpenAI 兼容接口都行，改 `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL`）；或 `LLM_PROVIDER=qwen` + `DASHSCOPE_API_KEY`；或 `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` |
+| 转写（ASR） | 默认豆包：`VOLC_ACCESS_KEY_ID`、`VOLC_SECRET_ACCESS_KEY`、`DOUBAO_ASR_APP_ID`、`DOUBAO_ASR_ACCESS_TOKEN`；也可 `ASR_PROVIDER=openai_whisper` / `deepgram` / `qwen` 配对应的 Key |
+| 音频摘要（TTS） | 可选；不用就设 `TTS_ENABLED=false` |
+
+豆包应用要开通的能力和 Mac 版一样：**豆包录音文件识别模型2.0** + 录音文件识别**极速版**。`.env` 里每一项上方都有注释说明。
+
+### 4. 启动
+
+再次双击 `start-web.bat` / `start-web.command`（或运行 `python3 scripts/web.py`）。后端在 `8000` 端口、网页在 `5174` 端口启动，浏览器会自动打开 `http://127.0.0.1:5174`。
+
+**关掉这个命令行窗口或按 Ctrl+C，服务就停止。** 数据在项目里的 `data/` 目录。
+
+### 更新网页版
+
+```bash
+git pull
+python3 scripts/web.py install
+```
+
+YouTube / B 站下载大量失败时，同样用这两条命令更新（会一起更新 yt-dlp）。
+
 ## 第三方组件
 
 GotIt.app 内附带以下以独立可执行文件形式分发的第三方程序：
@@ -123,5 +194,16 @@ Everything runs on your Mac with **your own API keys** (stored in the Keychain).
 | Audio digest (TTS, optional) | Doubao TTS, Qwen |
 
 **Video downloads failing?** Settings › Service › Extraction Component → Check & Update → Restart Backend to Apply.
+
+### Web version (Windows / macOS / Linux)
+
+Runs the same backend locally with the UI in your browser — works on **Windows** and Intel Macs too.
+
+1. Install Python 3.11+ (Windows: tick "Add python.exe to PATH"), Node.js 20+, FFmpeg (`winget install Gyan.FFmpeg` / `brew install ffmpeg`) and, for YouTube, Deno (`winget install DenoLand.Deno` / `brew install deno`).
+2. `git clone https://github.com/zz2543/Podcast-summary.git`, then double-click `start-web.bat` (Windows) or `start-web.command` (macOS). The first run installs everything and opens `.env`; or run `python3 scripts/web.py install` (`py` on Windows).
+3. Put your own keys in `.env` (LLM: `DEEPSEEK_API_KEY` or any OpenAI-compatible endpoint; ASR: Volcengine/Doubao keys, or Whisper / Deepgram / Qwen; set `TTS_ENABLED=false` if you skip audio digests).
+4. Double-click the launcher again (or `python3 scripts/web.py`). The UI opens at `http://127.0.0.1:5174`; closing the window or Ctrl+C stops it.
+
+Update with `git pull` followed by `python3 scripts/web.py install`.
 
 Source code: [zz2543/Podcast-summary](https://github.com/zz2543/Podcast-summary).
